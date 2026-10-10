@@ -45,6 +45,9 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     private volatile boolean isStopped = false;
     private MediaProjectionManager mediaProjectionManager;
     private WindowManager windowManager;
+    private Display display;
+    private int initialDisplayRotation;
+    private boolean initialIsPortrait;
     private boolean isPortrait;
 
     /**
@@ -66,7 +69,10 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
         // Silently drop in-flight frames that arrive after stop/dispose.
         // stopCapture() no longer holds the monitor (synchronized removed), so guard explicitly here.
         if (isDisposed || isStopped) return;
-        this.isPortrait = isDeviceOrientationPortrait();
+        // Display.getRotation() is cheap; avoid allocating DisplayMetrics for every frame.
+        final int rotation = display.getRotation();
+        this.isPortrait = ((rotation & 1) == (initialDisplayRotation & 1))
+                ? initialIsPortrait : !initialIsPortrait;
         final int max = Math.max(this.height, this.width);
         final int min = Math.min(this.height, this.width);
         final int newW = this.isPortrait ? min : max;
@@ -80,9 +86,9 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     }
 
     private boolean isDeviceOrientationPortrait() {
-        final Display display = windowManager.getDefaultDisplay();
+        final Display currentDisplay = display;
         final DisplayMetrics metrics = new DisplayMetrics();
-        display.getRealMetrics(metrics);
+        currentDisplay.getRealMetrics(metrics);
         
         return metrics.heightPixels > metrics.widthPixels;
     }
@@ -108,6 +114,7 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
 
         this.windowManager = (WindowManager) applicationContext.getSystemService(
                 Context.WINDOW_SERVICE);
+        this.display = windowManager.getDefaultDisplay();
         this.mediaProjectionManager = (MediaProjectionManager) applicationContext.getSystemService(
                 Context.MEDIA_PROJECTION_SERVICE);
     }
@@ -118,6 +125,8 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
         //checkNotDisposed();
 
         this.isPortrait = isDeviceOrientationPortrait();
+        this.initialIsPortrait = this.isPortrait;
+        this.initialDisplayRotation = display.getRotation();
         if (this.isPortrait) {
             this.width = width;
             this.height = height;
