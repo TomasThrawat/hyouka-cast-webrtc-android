@@ -564,16 +564,16 @@ Display display = wm.getDefaultDisplay();
 Point size = new Point();
 display.getRealSize(size);
 
-// Bound the longer edge to 1280 px and the shorter edge to 720 px.
-// Keep the source aspect ratio in either orientation to reduce encoding load
-// and end-to-end latency on mid-range phones.
+// Allow Full-HD screen capture while preserving the source aspect ratio.
+// The sender applies an 8 Mbps ceiling and lets WebRTC adapt frame rate under
+// load, rather than permanently downscaling every screen to 720p.
 int sourceWidth = Math.max(2, size.x);
 int sourceHeight = Math.max(2, size.y);
 float scale = Math.min(
     1.0f,
     Math.min(
-        1280.0f / Math.max(sourceWidth, sourceHeight),
-        720.0f / Math.min(sourceWidth, sourceHeight)));
+        1920.0f / Math.max(sourceWidth, sourceHeight),
+        1080.0f / Math.min(sourceWidth, sourceHeight)));
 int captureWidth = Math.max(2, Math.round(sourceWidth * scale) & ~1);
 int captureHeight = Math.max(2, Math.round(sourceHeight * scale) & ~1);
 
